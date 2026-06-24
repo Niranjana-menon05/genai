@@ -1,0 +1,22 @@
+{
+    "f455c6de-b7eb-4d96-a2e2-c8d783957736": {
+        "id": "f455c6de-b7eb-4d96-a2e2-c8d783957736",
+        "filename": "LP_MODULE 3.pdf",
+        "file_size": 3939815,
+        "extension": ".pdf",
+        "is_pyq": false,
+        "status": "ready",
+        "uploaded_at": "2026-06-24 14:44:06",
+        "total_pages": 94
+    },
+    "fa8ab968-efa6-4697-99be-f87d09cc1429": {
+        "id": "fa8ab968-efa6-4697-99be-f87d09cc1429",
+        "filename": "AIT307-Qp 2022.pdf",
+        "file_size": 189950,
+        "extension": ".pdf",
+        "is_pyq": true,
+        "status": "ready",
+        "uploaded_at": "2026-06-24 14:44:16",
+        "total_pages": 2
+    }
+}

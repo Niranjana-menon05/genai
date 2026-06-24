@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Lecture Companion - Smart Student Hub</title>
+  <!-- Tailwind CSS v4 Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons for premium modern styling -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom CSS for typography, animations, scrollbars, and pastel variables -->
+  <link rel="stylesheet" href="/css/custom.css">
+  
+  <script>
+    // Tailwind Config for custom pastel colors and dark mode configuration
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            // Elegant Pastel Palette
+            pastel: {
+              purple: {
+                50: '#f5f3ff',
+                100: '#ede9fe',
+                200: '#ddd6fe',
+                700: '#6d28d9',
+                800: '#5b21b6',
+              },
+              blue: {
+                50: '#f0f9ff',
+                100: '#e0f2fe',
+                200: '#bae6fd',
+                700: '#0369a1',
+                800: '#075985',
+              },
+              mint: {
+                50: '#ecfdf5',
+                100: '#d1fae5',
+                200: '#a7f3d0',
+                700: '#047857',
+                800: '#065f46',
+              },
+              rose: {
+                50: '#fff1f2',
+                100: '#ffe4e6',
+                200: '#fecdd3',
+                700: '#be123c',
+                800: '#9f1239',
+              },
+              amber: {
+                50: '#fffbeb',
+                100: '#fef3c7',
+                200: '#fde68a',
+                700: '#b45309',
+                800: '#92400e',
+              },
+              slate: {
+                50: '#f8fafc',
+                100: '#f1f5f9',
+                200: '#e2e8f0',
+                800: '#1e293b',
+                900: '#0f172a',
+              }
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-pastel-slate-50 dark:bg-pastel-slate-900 text-slate-800 dark:text-slate-200 transition-all-300 min-h-screen flex overflow-hidden">
+
+  <!-- ================= SIDEBAR NAVIGATION ================= -->
+  <aside id="sidebar" class="w-64 bg-white dark:bg-pastel-slate-850 border-r border-slate-100 dark:border-slate-800 flex flex-col z-30 transition-all-300 fixed inset-y-0 left-0 -translate-x-full md:translate-x-0 md:relative">
+    <!-- Brand / Title -->
+    <div class="h-16 flex items-center justify-between px-6 border-b border-slate-100 dark:border-slate-800">
+      <div class="flex items-center gap-2">
+        <div class="p-2 rounded-xl bg-pastel-purple-100 dark:bg-purple-950/40 text-pastel-purple-700 dark:text-purple-400">
+          <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="font-extrabold text-md tracking-tight bg-gradient-to-r from-purple-600 to-indigo-500 bg-clip-text text-transparent">AI Lecture</h1>
+          <p class="text-[10px] text-slate-400 font-medium tracking-wide uppercase">Companion</p>
+        </div>
+      </div>
+      <!-- Mobile Close Btn -->
+      <button onclick="toggleSidebar()" class="md:hidden p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <!-- Navigation links -->
+    <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+      <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn active flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-sm font-semibold transition-all-300">
+        <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
+      </button>
+      <button onclick="switchTab('upload')" id="nav-upload" class="nav-btn flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-sm font-semibold transition-all-300">
+        <i data-lucide="file-up" class="w-4 h-4"></i> Upload Materials
+      </button>
+      <button onclick="switchTab('chat')" id="nav-chat" class="nav-btn flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-sm font-semibold transition-all-300">
+        <i data-lucide="message-square-code" class="w-4 h-4"></i> Chat Assistant
+      </button>
+      <button onclick="switchTab('revision')" id="nav-revision" class="nav-btn flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-sm font-semibold transition-all-300">
+        <i data-lucide="notebook" class="w-4 h-4"></i> Revision Notes
+      </button>
+      <button onclick="switchTab('pyq')" id="nav-pyq" class="nav-btn flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-sm font-semibold transition-all-300">
+        <i data-lucide="bar-chart-3" class="w-4 h-4"></i> PYQ Analysis
+      </button>
+      <button onclick="switchTab('quiz')" id="nav-quiz" class="nav-btn flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-sm font-semibold transition-all-300">
+        <i data-lucide="puzzle" class="w-4 h-4"></i> Quiz Generator
+      </button>
+    </nav>
+
+    <!-- User Profile / Footer Info -->
+    <div class="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+      <div class="flex items-center gap-3 p-2 rounded-xl">
+        <div class="w-9 h-9 rounded-full bg-pastel-blue-100 text-pastel-blue-700 font-bold flex items-center justify-center text-sm border border-pastel-blue-200">
+          ST
+        </div>
+        <div class="flex-1 min-w-0">
+          <h2 class="text-xs font-bold truncate">Student Workspace</h2>
+          <p class="text-[10px] text-slate-400 truncate">Academic MVP Mode</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Sidebar Overlay for Mobile -->
+  <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-20 hidden md:hidden"></div>
+
+  <!-- ================= MAIN CONTENT WINDOW ================= -->
+  <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+    
+    <!-- Top Bar -->
+    <header class="h-16 border-b border-slate-100 dark:border-slate-800 bg-white/70 dark:bg-pastel-slate-900/70 backdrop-blur-md px-6 flex items-center justify-between z-10">
+      <div class="flex items-center gap-4">
+        <!-- Hamburger Menu -->
+        <button onclick="toggleSidebar()" class="md:hidden p-2 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+        <div class="hidden sm:block">
+          <h2 id="topbar-title" class="text-md font-bold text-slate-700 dark:text-slate-200">Dashboard</h2>
+          <p id="topbar-subtitle" class="text-xs text-slate-400">Welcome to your study dashboard.</p>
+        </div>
+      </div>
+
+      <!-- User Actions & Theme Toggle -->
+      <div class="flex items-center gap-3">
+        <!-- Connection Status Indicator -->
+        <div id="status-badge" class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-pastel-mint-50 text-pastel-mint-700 border border-pastel-mint-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> Mock Engine Active
+        </div>
+
+        <!-- Light / Dark Mode Toggle -->
+        <button onclick="toggleDarkMode()" class="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-all-300">
+          <i id="theme-icon" data-lucide="sun" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content Area Container -->
+    <main id="main-content" class="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
+
+      <!-- ================= TAB: DASHBOARD ================= -->
+      <div id="tab-dashboard" class="tab-pane space-y-6">
+        <!-- Welcome Jumbotron -->
+        <div class="p-6 md:p-8 rounded-3xl bg-gradient-to-r from-purple-100 via-indigo-50 to-blue-50 dark:from-purple-950/20 dark:via-indigo-950/10 dark:to-blue-950/10 border border-purple-100/40 dark:border-purple-900/30 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden pastel-shadow-purple">
+          <div class="space-y-3 max-w-lg z-10 text-center md:text-left">
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-200/50 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">Revision Hub</span>
+            <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight">Boost Your Exam Preparation</h2>
+            <p class="text-sm text-slate-600 dark:text-slate-350 leading-relaxed">Upload lecture slides, notes, or sample papers. Let our AI RAG pipeline organize terms, generate summaries, create quizzes, and analyze previous year questions.</p>
+            <div class="pt-2 flex flex-wrap gap-3 justify-center md:justify-start">
+              <button onclick="switchTab('upload')" class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md transition-all-300">
+                Get Started
+              </button>
+              <button onclick="switchTab('chat')" class="px-5 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-900 font-bold text-xs transition-all-300">
+                Ask a Question
+              </button>
+            </div>
+          </div>
+          <!-- Visual graphics -->
+          <div class="relative w-40 h-40 flex items-center justify-center opacity-85 z-0">
+            <div class="absolute inset-0 bg-purple-300/30 dark:bg-purple-900/30 rounded-full blur-2xl"></div>
+            <i data-lucide="sparkles" class="w-24 h-24 text-purple-400 dark:text-purple-500 soft-pulse"></i>
+          </div>
+        </div>
+
+        <!-- Metric Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <!-- Card 1 -->
+          <div class="p-6 rounded-2xl bg-white dark:bg-pastel-slate-850 border border-slate-100 dark:border-slate-800 flex items-center gap-4 hover:shadow-md transition-all-300">
+            <div class="p-4 rounded-xl bg-pastel-purple-50 dark:bg-purple-950/20 text-pastel-purple-700 dark:text-purple-400">
+              <i data-lucide="files" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Docs Uploaded</p>
+              <h3 id="stat-docs" class="text-xl md:text-2xl font-black">0</h3>
+            </div>
+          </div>
+          <!-- Card 2 -->
+          <div class="p-6 rounded-2xl bg-white dark:bg-pastel-slate-850 border border-slate-100 dark:border-slate-800 flex items-center gap-4 hover:shadow-md transition-all-300">
+            <div class="p-4 rounded-xl bg-pastel-blue-50 dark:bg-sky-950/20 text-pastel-blue-700 dark:text-sky-400">
+              <i data-lucide="message-square" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Questions Asked</p>
+              <h3 id="stat-queries" class="text-xl md:text-2xl font-black">0</h3>
+            </div>
+          </div>
+          <!-- Card 3 -->
+          <div class="p-6 rounded-2xl bg-white dark:bg-pastel-slate-850 border border-slate-100 dark:border-slate-800 flex items-center gap-4 hover:shadow-md transition-all-300">
+            <div class="p-4 rounded-xl bg-pastel-rose-50 dark:bg-rose-950/20 text-pastel-rose-700 dark:text-rose-400">
+              <i data-lucide="file-text" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Notes Generated</p>
+              <h3 id="stat-notes" class="text-xl md:text-2xl font-black">0</h3>
+            </div>
+          </div>
+          <!-- Card 4 -->
+          <div class="p-6 rounded-2xl bg-white dark:bg-pastel-slate-850 border border-slate-100 dark:border-slate-800 flex items-center gap-4 hover:shadow-md transition-all-300">
+            <div class="p-4 rounded-xl bg-pastel-mint-50 dark:bg-emerald-950/20 text-pastel-mint-700 dark:text-emerald-400">
+              <i data-lucide="clipboard-check" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Quizzes Taken</p>
+              <h3 id="stat-quizzes" class="text-xl md:text-2xl font-black">0</h3>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard Content Split -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Recent Document list (2 cols on large screen) -->
+          <div class="lg:col-span-2 p-6 bg-white dark:bg-pastel-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-sm tracking-tight">Recent Study Materials</h3>
+              <button onclick="switchTab('upload')" class="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline">View All</button>
+            </div>
+            
+            <!-- Document List Hook -->
+            <div id="dashboard-docs-list" class="space-y-2">
+              <!-- Empty state standard -->
+              <div class="py-12 text-center space-y-2">
+                <i data-lucide="folder-open" class="w-8 h-8 text-slate-300 mx-auto"></i>
+                <p class="text-xs text-slate-400">No documents uploaded yet.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick revision tips/actions -->
+          <div class="p-6 bg-white dark:bg-pastel-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+            <h3 class="font-bold text-sm tracking-tight">Quick Revision Steps</h3>
+            <div class="space-y-4 text-xs font-medium">
+              <!-- Step 1 -->
+              <div class="flex gap-3">
+                <span class="w-6 h-6 rounded-full bg-pastel-purple-50 dark:bg-purple-950/40 text-pastel-purple-700 flex items-center justify-center font-bold text-[10px] shrink-0">1</span>
+                <div>
+                  <h4 class="font-bold text-slate-700 dark:text-slate-350">Upload materials</h4>
+                  <p class="text-slate-450 text-[11px] mt-0.5">Drag-and-drop your PDFs, DOCX files, or slide PPTs into the Library.</p>
+                </div>
+              </div>
+              <!-- Step 2 -->
+              <div class="flex gap-3">
+                <span class="w-6 h-6 rounded-full bg-pastel-blue-50 dark:bg-sky-950/40 text-pastel-blue-700 flex items-center justify-center font-bold text-[10px] shrink-0">2</span>
+                <div>
+                  <h4 class="font-bold text-slate-700 dark:text-slate-350">Ask study companion</h4>
+                  <p class="text-slate-450 text-[11px] mt-0.5">Interact with the chatbot to ask complex definitions or topic breakdowns.</p>
+                </div>
+              </div>
+              <!-- Step 3 -->
+              <div class="flex gap-3">
+                <span class="w-6 h-6 rounded-full bg-pastel-mint-50 dark:bg-emerald-950/40 text-pastel-mint-700 flex items-center justify-center font-bold text-[10px] shrink-0">3</span>
+                <div>
+                  <h4 class="font-bold text-slate-700 dark:text-slate-350">Generate Exam Aids</h4>
+                  <p class="text-slate-450 text-[11px] mt-0.5">Create custom exam guides, cheat sheets, or practice quizzes instantly.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= TAB: UPLOAD MATERIALS ================= -->
+      <div id="tab-upload" class="tab-pane space-y-6 hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Left: Upload area -->
+          <div class="space-y-4">
+            <div class="p-6 bg-white dark:bg-pastel-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+              <h3 class="font-bold text-sm tracking-tight">Upload New Files</h3>
+              
+              <!-- Dropzone -->
+              <div id="dropzone" class="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center hover:border-purple-400 dark:hover:border-purple-900 transition-all-300 cursor-pointer space-y-3 relative group">
+                <input type="file" id="file-input" class="absolute inset-0 opacity-0 cursor-pointer" multiple accept=".pdf,.docx,.pptx,.ppt,.txt,.md">
+                <div class="p-3 bg-slate-55 rounded-full inline-block group-hover:scale-105 transition-all-300 text-slate-450">
+                  <i data-lucide="cloud-upload" class="w-8 h-8 mx-auto text-slate-400 group-hover:text-purple-500"></i>
+                </div>
+                <div class="space-y-1">
+                  <p class="text-xs font-bold text-slate-650">Drag & drop files here</p>
+                  <p class="text-[10px] text-slate-400">PDF, DOCX, PPTX, PPT, TXT, MD up to 25MB</p>
+                </div>
+              </div>
+
+              <!-- Options -->
+              <div class="space-y-2 pt-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" id="upload-is-pyq" class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-slate-350 bg-slate-50">
+                  <span class="text-xs font-semibold text-slate-600 dark:text-slate-400">Mark as Previous Year Question (PYQ) paper</span>
+                </label>
+              </div>
+
+              <!-- Uploading Queue list -->
+              <div id="upload-queue-container" class="space-y-2 hidden">
+                <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Uploading Queue</h4>
+                <div id="upload-queue-list" class="space-y-1">
+                  <!-- File uploads dynamic -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Document Library (takes 2 cols) -->
+          <div class="lg:col-span-2 p-6 bg-white dark:bg-pastel-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-sm tracking-tight">Academic Document Library</h3>
+              <span id="library-count" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500">0 files</span>
+            </div>
+
+            <!-- Documents Table Container -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <th class="pb-3 w-[50%]">Document Name</th>
+                    <th class="pb-3 w-[15%]">Type</th>
+                    <th class="pb-3 w-[15%]">Status</th>
+                    <th class="pb-3 w-[20%] text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="library-table-body" class="text-xs">
+                  <!-- Dynamic Document Library Rows -->
+                  <tr>
+                    <td colspan="4" class="py-12 text-center space-y-2">
+                      <i data-lucide="files" class="w-8 h-8 text-slate-300 mx-auto"></i>
+                      <p class="text-xs text-slate-400">No documents found. Upload materials to start.</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ================= TAB: CHAT ASSISTANT ================= -->
+      <div id="tab-chat" class="tab-pane hidden h-[calc(100vh-12rem)] flex flex-col md:flex-row gap-6">
+        
+        <!-- Left: Document Context Selector -->
+        <div class="w-full md:w-64 bg-white dark:bg-pastel-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 flex flex-col gap-4">
+          <h3 class="font-bold text-sm tracking-tight">Scope Selection</h3>
+          <div class="space-y-2 text-xs">
+            <p class="text-slate-400 font-semibold text-[10px] uppercase">RAG Search Scope</p>
+            <div class="space-y-1">
+              <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+                <input type="radio" name="chat-scope" value="all" checked class="text-purple-600 focus:ring-purple-500">
+                <span class="font-bold">All Documents</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+                <input type="radio" name="chat-scope" value="selected" class="text-purple-600 focus:ring-purple-500">
+                <span class="font-bold">Selected Files Only</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Document List Checklist (for selective RAG) -->
+          <div class="flex-1 flex flex-col gap-2 min-h-0">
+            <p class="text-slate-400 font-semibold text-[10px] uppercase">Select Documents</p>
+            <div id="chat-doc-checklist" class="flex-1 overflow-y-auto space-y-1.5 pr-1">
+              <!-- Dynamic doc checkboxes -->
+              <p class="text-[11px] text-slate-405 italic p-2">Upload files to enable selection.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Interactive Chat Interface -->
+        <div class="flex-1 bg-white dark:bg-pastel-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col min-w-0 overflow-hidden relative">
+          <!-- Chat Header -->
+          <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/10">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm shadow-indigo-300"></span>
+              <h3 class="font-bold text-sm">Study Assistant Bot</h3>
+            </div>
+            <button onclick="clearChat()" class="text-xs font-semibold text-slate-450 hover:text-rose-600 flex items-center gap-1">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear History
+            </button>
+          </div>
+
+          <!-- Chat Conversation List -->
+          <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4">
+            <!-- Initial Greeting -->
+            <div class="flex gap-3 max-w-[85%]">
+              <div class="w-8 h-8 rounded-full bg-pastel-purple-100 text-pastel-purple-700 font-bold text-xs flex items-center justify-center shrink-0">
+                AI
+              </div>
+              <div class="space-y-1">
+                <div class="bg-pastel-purple-50 dark:bg-purple-950/20 text-slate-800 dark:text-slate-200 p-4 rounded-2xl rounded-tl-none border border-pastel-purple-100 dark:border-purple-900/20 text-xs leading-relaxed">
+                  <p class="font-semibold text-xs mb-1 text-pastel-purple-800 dark:text-purple-300">Hey there! 👋</p>
+                  <p>I'm your academic study assistant. What topic from your lecture materials would you like to review? You can ask me to explain concepts, define equations, or summarize pages.</p>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <button onclick="triggerQuickQuestion('Explain Deadlocks')" class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-850 hover:bg-slate-50 border border-slate-200 dark:border-slate-850 text-[11px] font-semibold text-slate-650 dark:text-slate-350 transition-all-300">
+                      Explain Deadlocks
+                    </button>
+                    <button onclick="triggerQuickQuestion('What is Process Synchronization?')" class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-850 hover:bg-slate-50 border border-slate-200 dark:border-slate-850 text-[11px] font-semibold text-slate-650 dark:text-slate-350 transition-all-300">
+                      Process Synchronization
+                    </button>
+                    <button onclick="triggerQuickQuestion('Summarize Module 3')" class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-850 hover:bg-slate-50 border border-slate-200 dark:border-slate-850 text-[11px] font-semibold text-slate-650 dark:text-slate-350 transition-all-300">
+                      Summarize Module 3
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Messages render here -->
+          </div>
+
+          <!-- Chat Input Bar -->
+          <div class="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/10">
+            <form id="chat-form" onsubmit="handleSendChat(event)" class="flex gap-2 relative items-center">
+              <input type="text" id="chat-input" placeholder="Type your academic question here (e.g. Explain Mutual Exclusion)..." class="flex-1 px-4 py-3 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 dark:focus:ring-purple-900 focus:border-transparent transition-all-300 pr-12">
+              <button type="submit" class="absolute right-2 p-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-all-300">
+                <i data-lucide="send" class="w-4 h-4"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================= TAB: REVISION NOTES ================= -->
+      <div id="tab-revision" class="tab-pane hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Setup Panel -->
+          <div class="p-6 bg-white dark:bg-pastel-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4 h-fit">
+            <h3 class="font-bold text-sm tracking-tight">Configure Revision Notes</h3>
+            
+            <!-- Selected Documents scope -->
+            <div class="space-y-2">
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Select Files to Reference</label>
+              <div id="revision-doc-checklist" class="max-h-40 overflow-y-auto space-y-1.5 border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/20">
+                <!-- Checkboxes populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Note Type Selector -->
+            <div class="space-y-2">
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Note Template</label>
+              <div class="grid grid-cols-3 gap-2">
+                <label class="border border-slate-150 dark:border-slate-800 rounded-xl p-2.5 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 block has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50/50 dark:has-[:checked]:bg-purple-950/20 dark:has-[:checked]:border-purple-500 text-slate-500 has-[:checked]:text-purple-750 dark:has-[:checked]:text-purple-300 transition-all-300">
+                  <input type="radio" name="note-type" value="Short Summary" checked class="sr-only">
+                  <i data-lucide="file-minus" class="w-4 h-4 mx-auto mb-1 text-current opacity-70"></i>
+                  <span class="text-[10px] font-bold block">Summary</span>
+                </label>
+                <label class="border border-slate-150 dark:border-slate-800 rounded-xl p-2.5 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 block has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50/50 dark:has-[:checked]:bg-purple-950/20 dark:has-[:checked]:border-purple-500 text-slate-500 has-[:checked]:text-purple-750 dark:has-[:checked]:text-purple-300 transition-all-300">
+                  <input type="radio" name="note-type" value="Exam Guide" class="sr-only">
+                  <i data-lucide="award" class="w-4 h-4 mx-auto mb-1 text-current opacity-70"></i>
+                  <span class="text-[10px] font-bold block">Exam Guide</span>
+                </label>
+                <label class="border border-slate-150 dark:border-slate-800 rounded-xl p-2.5 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 block has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50/50 dark:has-[:checked]:bg-purple-950/20 dark:has-[:checked]:border-purple-500 text-slate-500 has-[:checked]:text-purple-750 dark:has-[:checked]:text-purple-300 transition-all-300">
+                  <input type="radio" name="note-type" value="Cheat Sheet" class="sr-only">
+                  <i data-lucide="zap" class="w-4 h-4 mx-auto mb-1 text-current opacity-70"></i>
+                  <span class="text-[10px] font-bold block">Cheat Sheet</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Topic Title input -->
+            <div class="space-y-2">
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Topic / Module Name</label>
+              <input type="text" id="revision-topic" placeholder="e.g. Banker's Algorithm, Memory Paging" class="w-full px-3 py-2.5 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-purple-400 focus:outline-none">
+            </div>
+
+            <button onclick="handleGenerateRevisionNotes()" class="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs shadow-md transition-all-300">
+              Generate Study Aids
+            </button>
+          </div>
+
+          <!-- Result Display Card (takes 2 columns) -->
+          <div class="lg:col-span-2 p-6 bg-white dark:bg-pastel-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col space-y-4">
+            <h3 class="font-bold text-sm tracking-tight border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
+              <span>Study Aids Output</span>
+              <button onclick="copyRevisionNotes()" class="text-xs font-bold text-slate-450 hover:text-purple-600 flex items-center gap-1">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy Output
+              </button>
+            </h3>
+
+            <!-- Output Display Pane -->
+            <div id="revision-output-panel" class="flex-1 overflow-y-auto min-h-[400px] max-h-[550px] pr-1">
+              <!-- Empty state -->
+              <div class="h-full flex flex-col items-center justify-center text-center space-y-3 py-16">
+                <div class="p-4 bg-pastel-rose-50 dark:bg-rose-950/20 text-pastel-rose-700 rounded-full">
+                  <i data-lucide="notebook-tabs" class="w-10 h-10"></i>
+                </div>
+                <div class="max-w-xs space-y-1">
+                  <h4 class="font-bold text-sm">No notes generated yet</h4>
+                  <p class="text-xs text-slate-400">Configure the parameters on the left and click generate to build study materials.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= TAB: PYQ TOPIC ANALYZER ================= -->
+      <div id="tab-pyq" class="tab-pane hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Selection & Trigger Panel -->
+          <div class="p-6 bg-white dark:bg-pastel-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4 h-fit">
+            <h3 class="font-bold text-sm tracking-tight">Configure Analyzer</h3>
+            <p class="text-[11px] text-slate-450">Compare previous-year papers with your notes to extract frequently asked topics and weights.</p>
+            
+            <!-- Uploaded PYQ select -->
+            <div class="space-y-2">
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Select Uploaded PYQ Paper</label>
+              <select id="pyq-paper-select" class="w-full px-3 py-2.5 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-purple-400 focus:outline-none">
+                <!-- Loaded dynamically -->
+                <option value="">-- No PYQ papers uploaded --</option>
+              </select>
+              <p class="text-[9px] text-slate-400">Make sure to flag documents as PYQ during upload to list them here.</p>
+            </div>
+
+            <!-- Notes context scope -->
+            <div class="space-y-2">
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Match against syllabus/notes</label>
+              <div id="pyq-notes-checklist" class="max-h-40 overflow-y-auto space-y-1.5 border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/20">
+                <!-- Checkboxes populated dynamically -->
+              </div>
+            </div>
+
+            <button onclick="handleAnalyzePYQ()" class="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs shadow-md transition-all-300">
+              Run PYQ Topic Analysis
+            </button>
+          </div>
+
+          <!-- Result Area -->
+          <div class="lg:col-span-2 p-6 bg-white dark:bg-pastel-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+            <h3 class="font-bold text-sm tracking-tight">Weightage Analysis & Ranked Topics</h3>
+            
+            <!-- Results body -->
+            <div id="pyq-output-panel" class="min-h-[400px]">
+              <!-- Empty State -->
+              <div class="h-full flex flex-col items-center justify-center text-center space-y-3 py-16">
+                <div class="p-4 bg-pastel-blue-50 dark:bg-sky-950/20 text-pastel-blue-700 rounded-full">
+                  <i data-lucide="bar-chart-big" class="w-10 h-10"></i>
+                </div>
+                <div class="max-w-xs space-y-1">
+                  <h4 class="font-bold text-sm">No analysis performed</h4>
+                  <p class="text-xs text-slate-400">Select a question paper and matching lecture note, then trigger the analyzer.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= TAB: QUIZ GENERATOR ================= -->
+      <div id="tab-quiz" class="tab-pane hidden space-y-6">
+        <!-- Setup Grid -->
+        <div id="quiz-setup-panel" class="p-6 bg-white dark:bg-pastel-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-6">
+          <div class="max-w-md space-y-4">
+            <div class="space-y-1">
+              <h3 class="font-bold text-md">AI Question Generator</h3>
+              <p class="text-xs text-slate-400">Create interactive revision assessments directly from your study materials.</p>
+            </div>
+            
+            <!-- Select materials checklist -->
+            <div class="space-y-2">
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Select reference documents</label>
+              <div id="quiz-doc-checklist" class="max-h-40 overflow-y-auto space-y-1.5 border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/20">
+                <!-- Loaded dynamically -->
+              </div>
+            </div>
+
+            <!-- Quiz parameters -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <!-- Question Type -->
+              <div class="space-y-1">
+                <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Question Format</label>
+                <select id="quiz-type" class="w-full px-3 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-purple-400 focus:outline-none">
+                  <option value="mcq">Multiple Choice (MCQ)</option>
+                  <option value="short">Short Answer</option>
+                  <option value="viva">Viva-Voce / Oral Prep</option>
+                </select>
+              </div>
+              
+              <!-- Difficulty -->
+              <div class="space-y-1">
+                <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Difficulty Level</label>
+                <select id="quiz-difficulty" class="w-full px-3 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-purple-400 focus:outline-none">
+                  <option value="easy">Easy</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+
+              <!-- Question Count -->
+              <div class="space-y-1">
+                <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Number of Questions</label>
+                <select id="quiz-count" class="w-full px-3 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-purple-400 focus:outline-none">
+                  <option value="3">3 Questions</option>
+                  <option value="5" selected>5 Questions</option>
+                </select>
+              </div>
+            </div>
+
+            <button onclick="handleGenerateQuiz()" class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs shadow-md transition-all-300">
+              Generate Practice Quiz
+            </button>
+          </div>
+        </div>
+
+        <!-- Interactive Quiz View (Hidden initially) -->
+        <div id="quiz-play-panel" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Quiz Board (takes 2 columns) -->
+          <div class="lg:col-span-2 p-6 bg-white dark:bg-pastel-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div class="space-y-1">
+                <h3 class="font-bold text-sm">Interactive Quiz Mode</h3>
+                <p id="quiz-progress-text" class="text-[11px] text-slate-405">Question 1 of 5</p>
+              </div>
+              <button onclick="resetQuizInterface()" class="px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-[11px] font-bold">
+                Exit Quiz
+              </button>
+            </div>
+
+            <!-- Single Question Card -->
+            <div class="space-y-4">
+              <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800/60">
+                <h4 id="quiz-question-text" class="font-bold text-xs sm:text-sm">Sample Question Text?</h4>
+              </div>
+
+              <!-- Options (for MCQ) -->
+              <div id="quiz-options-container" class="grid grid-cols-1 gap-3">
+                <!-- Populate dynamically -->
+              </div>
+              
+              <!-- Text area answer (for Short/Viva) -->
+              <div id="quiz-text-answer-container" class="space-y-2 hidden">
+                <textarea id="quiz-text-answer" rows="4" placeholder="Type your answer outline here to self-assess..." class="w-full px-3 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:ring-1 focus:ring-purple-400 focus:outline-none"></textarea>
+                <button onclick="revealTextAnswer()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-xs transition-all-300">
+                  Reveal Sample Answer
+                </button>
+              </div>
+            </div>
+
+            <!-- Navigation Controls -->
+            <div class="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button id="quiz-prev-btn" onclick="prevQuestion()" disabled class="px-4 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-bold text-xs transition-all-300">
+                Previous
+              </button>
+              <button id="quiz-next-btn" onclick="nextQuestion()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-xs transition-all-300">
+                Next Question
+              </button>
+            </div>
+          </div>
+
+          <!-- Explanation Panel (1 column) -->
+          <div class="p-6 bg-white dark:bg-pastel-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+            <h3 class="font-bold text-sm tracking-tight">Answer Review & Feedback</h3>
+            
+            <div id="quiz-feedback-panel" class="space-y-4 text-xs">
+              <!-- Empty/Waiting feedback -->
+              <div class="py-12 text-center text-slate-400 space-y-2">
+                <i data-lucide="eye" class="w-8 h-8 text-slate-200 mx-auto"></i>
+                <p>Select an option or submit an answer to view explanations.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quiz Completion Screen (Hidden initially) -->
+        <div id="quiz-completion-panel" class="hidden max-w-md mx-auto p-8 bg-white dark:bg-pastel-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 text-center space-y-6">
+          <div class="p-4 bg-pastel-mint-50 dark:bg-emerald-950/20 text-pastel-mint-700 rounded-full inline-block">
+            <i data-lucide="trophy" class="w-16 h-16"></i>
+          </div>
+          <div class="space-y-2">
+            <h3 class="font-extrabold text-lg">Quiz Completed!</h3>
+            <p class="text-xs text-slate-400">Great job preparing yourself. Review the score and explanation keys to lock in the concepts.</p>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800">
+            <span class="text-xs text-slate-400 block uppercase font-bold tracking-wider">Score</span>
+            <span id="quiz-final-score" class="text-3xl font-black text-emerald-600">4 / 5</span>
+          </div>
+          <button onclick="resetQuizInterface()" class="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs shadow-md transition-all-300 w-full">
+            Return to Generator
+          </button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Global Banner Notifications -->
+  <div id="notification-banner" class="fixed bottom-6 right-6 px-4 py-3 rounded-xl shadow-lg border text-xs font-bold transition-all-300 translate-y-24 opacity-0 z-50 flex items-center gap-2">
+    <!-- Managed via JavaScript -->
+  </div>
+
+  <!-- Frontend SPA State Script -->
+  <script src="/js/app.js"></script>
+
+</body>
+</html>
