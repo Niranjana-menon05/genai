@@ -147,6 +147,18 @@ Context:
             "reason", "reasons", "cause", "causes", "source", "sources", "origin", "origins",
             "idea", "ideas", "concept", "concepts", "notion", "notions", "theory", "theories"
         }
+
+        def clean_text(text_str: str) -> str:
+            text_str = text_str.replace("*", "").replace("`", "")
+            # Remove parenthesized figure/page references, e.g. (Figure 2) or (slide 5)
+            text_str = re.sub(r'\(\s*(?:figure|fig|slide|page|sec|section|table)\s*\d+[a-z]?\s*\)', '', text_str, flags=re.IGNORECASE).strip()
+            # Remove direct references, e.g. Figure 2 or slide 5
+            text_str = re.sub(r'\b(figure|fig|slide|page|sec|section|table)\s*\d+[a-z]?\b', '', text_str, flags=re.IGNORECASE).strip()
+            # Remove trailing numbers (typically slide or page numbers)
+            text_str = re.sub(r'\b\d+\b$', '', text_str).strip()
+            # Clean duplicate whitespaces
+            text_str = re.sub(r'\s+', ' ', text_str).strip()
+            return text_str
         
         for s in raw_sentences:
             s_clean = s.strip()
@@ -160,6 +172,10 @@ Context:
                     sub = re.sub(r'^(?:[a-zA-Z0-9]{1,3}[\.\)]|[•\-\*\d\.#\s\(\)])+', '', sub).strip()
                     # Clean predicate as well from leading symbols
                     pred = re.sub(r'^(?:[a-zA-Z0-9]{1,3}[\.\)]|[•\-\*\d\.#\s\(\)])+', '', pred).strip()
+                    
+                    # Clean figures, page numbers, trailing digits, etc.
+                    sub = clean_text(sub)
+                    pred = clean_text(pred)
                     
                     # Normalize subject to check if it's generic
                     sub_norm = sub.lower()
@@ -193,10 +209,10 @@ Context:
                 if len(words) > 4:
                     keyword = " ".join(words[:2])
                     rest = " ".join(words[2:])
-                    # Clean keyword from asterisks if any
-                    keyword = keyword.replace("*", "").replace("`", "")
-                    rest = rest.replace("*", "").replace("`", "")
-                    s_clean_words = s.replace("*", "").replace("`", "")
+                    
+                    keyword = clean_text(keyword)
+                    rest = clean_text(rest)
+                    s_clean_words = clean_text(s)
                     
                     if quiz_type.lower() == "mcq":
                         generated.append({
@@ -222,16 +238,16 @@ Context:
         
         generated = []
         for i, (sub, pred, full_sentence) in enumerate(pairs[:count]):
-            # Clean full sentence of asterisks and backticks
-            full_sentence_clean = full_sentence.replace("*", "").replace("`", "")
-            pred_clean = pred.replace("*", "").replace("`", "")
+            # Clean full sentence and predicate
+            full_sentence_clean = clean_text(full_sentence)
+            pred_clean = clean_text(pred)
             
             if quiz_type.lower() == "mcq":
                 # Correct option is the predicate
                 correct_ans = pred_clean
                 
-                # Distractors are other predicates from the document (cleaned of asterisks)
-                other_preds = [p.replace("*", "").replace("`", "") for p in all_predicates if p != pred]
+                # Distractors are other predicates from the document
+                other_preds = [clean_text(p) for p in all_predicates if p != pred]
                 random.shuffle(other_preds)
                 distractors = other_preds[:3]
                 
@@ -251,14 +267,14 @@ Context:
             elif quiz_type.lower() == "short":
                 generated.append({
                     "question": f"Based on your lecture notes, provide a detailed explanation of '{sub}'.",
-                    "sample_answer": f"{sub} refers to the mechanism where {pred_clean}. In the context of computer systems, this is crucial because it ensures proper resource allocation, process synchronization, or memory layout alignment as described in your study materials. Key concepts include its definition, its operational constraints, and how it behaves under workload pressure.",
-                    "explanation": f"The evaluator will look for a clear definition of {sub} as {pred_clean}. Additionally, the answer must highlight its architectural significance, key parameters, and how it impacts system performance."
+                    "sample_answer": f"{sub} refers to the concept or mechanism where {pred_clean}. In the context of the study material, understanding this is essential for analyzing the system's behavior and operational constraints. Key aspects include its basic definition, its role in the overall architecture, and how it relates to other components.",
+                    "explanation": f"The evaluator will look for a clear explanation of {sub} as {pred_clean}. The response should detail its definition, context within the study material, and its primary implications."
                 })
             else:  # viva
                 generated.append({
                     "question": f"If asked in a viva voce: 'What do you understand by the term \"{sub}\"?', how would you respond?",
-                    "sample_answer": f"Sir/Ma'am, in computer systems, {sub} is defined as {pred_clean}. To elaborate further, it functions by organizing or controlling system resources dynamically. Its primary goal is to optimize execution flow and prevent synchronization bottlenecks. We study this concept to understand how the operating system coordinates concurrent operations.",
-                    "explanation": f"Explain {sub} clearly using its core definition: '{pred_clean}'. To impress the examiner, relate it to real-world operating system behaviors, mention its benefits (e.g., efficiency, synchronization), and be ready to answer follow-up questions about its execution overhead."
+                    "sample_answer": f"Sir/Ma'am, {sub} is defined as {pred_clean}. To elaborate further, it functions as a core concept in this domain, defining key boundaries or constraints. We study this to understand how different components interact and how system behavior is coordinated under typical workloads.",
+                    "explanation": f"Explain {sub} clearly using its definition: '{pred_clean}'. To impress the examiner, relate it to the broader topics in the study material and discuss its practical implications or limitations."
                 })
                 
         return generated
