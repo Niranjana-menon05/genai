@@ -214,16 +214,32 @@ Context:
                     rest = clean_text(rest)
                     s_clean_words = clean_text(s)
                     
+                    # Fallback question templates
+                    fallback_mcq_templates = [
+                        f"Based on your notes, which of the following completes: '{keyword} ...'?",
+                        f"How does the phrase '{keyword} ...' finish in the source text?",
+                        f"Identify the correct continuation of the statement: '{keyword} ...'",
+                        f"Complete the following concept from your readings: '{keyword} ...'",
+                        f"Which option accurately completes: '{keyword} ...'?"
+                    ]
+                    fallback_text_templates = [
+                        f"Explain the context of: '{keyword}' from your reading material.",
+                        f"Provide a brief explanation of how '{keyword}' is used in the text.",
+                        f"Discuss the concept of '{keyword}' based on your study notes.",
+                        f"What does the source material state regarding '{keyword}'?",
+                        f"Elaborate on the significance of '{keyword}' in your notes."
+                    ]
+                    
                     if quiz_type.lower() == "mcq":
                         generated.append({
-                            "question": f"Based on your notes, which of the following completes: '{keyword} ...'?",
+                            "question": fallback_mcq_templates[len(generated) % len(fallback_mcq_templates)],
                             "options": [rest, "a fundamental component of the algorithm.", "an optimized resource constraint.", "scheduling queue parameters."],
                             "correct_answer": rest,
                             "explanation": f"Source document text: '{s_clean_words}'."
                         })
                     else:
                         generated.append({
-                            "question": f"Explain the context of: '{keyword}' from your reading material.",
+                            "question": fallback_text_templates[len(generated) % len(fallback_text_templates)],
                             "sample_answer": s_clean_words,
                             "explanation": f"Source notes state: '{s_clean_words}'."
                         })
@@ -258,21 +274,48 @@ Context:
                 options = [correct_ans] + distractors
                 random.shuffle(options)
                 
+                mcq_templates = [
+                    f"What is the primary function or definition of '{sub}' as described in the study notes?",
+                    f"Based on your readings, how is the concept of '{sub}' defined?",
+                    f"Which of the following best describes the role of '{sub}'?",
+                    f"In the context of the study material, what does '{sub}' refer to?",
+                    f"Which option correctly explains the mechanism of '{sub}'?"
+                ]
+                q_text = mcq_templates[i % len(mcq_templates)]
+                
                 generated.append({
-                    "question": f"Based on your study notes, what is the description or function of '{sub}'?",
+                    "question": q_text,
                     "options": options,
                     "correct_answer": correct_ans,
                     "explanation": f"According to your materials: '{full_sentence_clean}'"
                 })
             elif quiz_type.lower() == "short":
+                short_templates = [
+                    f"Based on your lecture notes, provide a detailed explanation of '{sub}'.",
+                    f"Discuss the significance and key operational constraints of '{sub}'.",
+                    f"Explain '{sub}' in detail, highlighting its role within the system.",
+                    f"Describe the mechanism of '{sub}' and summarize its main objectives as outlined in your study materials.",
+                    f"Write a comprehensive conceptual overview of '{sub}', focusing on its definition and behavior."
+                ]
+                q_text = short_templates[i % len(short_templates)]
+                
                 generated.append({
-                    "question": f"Based on your lecture notes, provide a detailed explanation of '{sub}'.",
+                    "question": q_text,
                     "sample_answer": f"{sub} refers to the concept or mechanism where {pred_clean}. In the context of the study material, understanding this is essential for analyzing the system's behavior and operational constraints. Key aspects include its basic definition, its role in the overall architecture, and how it relates to other components.",
                     "explanation": f"The evaluator will look for a clear explanation of {sub} as {pred_clean}. The response should detail its definition, context within the study material, and its primary implications."
                 })
             else:  # viva
+                viva_templates = [
+                    f"If asked in a viva voce: 'What do you understand by the term \"{sub}\"?', how would you respond?",
+                    f"How would you explain the concept of \"{sub}\" if an examiner asks you to define it during a viva?",
+                    f"Prepare a verbal response to the examiner's question: 'What is the primary purpose of \"{sub}\"?'",
+                    f"If an examiner asks you to describe \"{sub}\" in your own words, how would you structure your answer?",
+                    f"During a viva, how would you summarize the core function and limits of \"{sub}\"?"
+                ]
+                q_text = viva_templates[i % len(viva_templates)]
+                
                 generated.append({
-                    "question": f"If asked in a viva voce: 'What do you understand by the term \"{sub}\"?', how would you respond?",
+                    "question": q_text,
                     "sample_answer": f"Sir/Ma'am, {sub} is defined as {pred_clean}. To elaborate further, it functions as a core concept in this domain, defining key boundaries or constraints. We study this to understand how different components interact and how system behavior is coordinated under typical workloads.",
                     "explanation": f"Explain {sub} clearly using its definition: '{pred_clean}'. To impress the examiner, relate it to the broader topics in the study material and discuss its practical implications or limitations."
                 })
