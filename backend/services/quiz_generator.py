@@ -27,28 +27,50 @@ class QuizGenerator:
             # Format requirements based on quiz type
             format_instructions = ""
             if quiz_type.lower() == "mcq":
-                format_instructions = """Each question must be multiple choice. You MUST return a JSON array of objects, where each object has:
+                format_instructions = """Each question must be multiple choice.
+Return a JSON array of objects, where each object has:
 - "question": The question text.
 - "options": An array of exactly 4 strings.
 - "correct_answer": The exact string of the correct option.
-- "explanation": A detailed explanation of why the answer is correct and others are incorrect, verified for exam accuracy."""
+- "explanation": An elaborate, highly detailed explanation (at least 3-4 sentences) explaining why the answer is correct and why other options are incorrect based on the study material."""
             elif quiz_type.lower() == "short":
-                format_instructions = """Each question must be a short answer question. Return a JSON array of objects, where each object has:
+                format_instructions = """Each question must be a short answer question testing conceptual depth.
+Return a JSON array of objects, where each object has:
 - "question": The question text.
-- "sample_answer": A concise, ideal exam-style answer (2-4 sentences).
-- "explanation": An explanation of key concepts the grading evaluator will look for."""
+- "sample_answer": An elaborate, comprehensive model answer (at least 5-8 sentences or bullet points) that is structured and highly detailed, showing deep academic understanding.
+- "explanation": A detailed breakdown of the key scoring criteria, essential terms, and concepts the evaluator will look for in the answer."""
             else:  # Viva
-                format_instructions = """Each question must be a typical viva-voce/oral examination question. Return a JSON array of objects, where each object has:
+                format_instructions = """Each question must be a viva-voce/oral examination question.
+Return a JSON array of objects, where each object has:
 - "question": The question text.
-- "sample_answer": A quick, conversational, punchy response (1-2 sentences) that demonstrates deep understanding.
-- "explanation": Extra background knowledge or tip on how to impress the examiner."""
+- "sample_answer": An elaborate, detailed verbal response (4-6 sentences) that is professional, structured, and displays strong conceptual mastery.
+- "explanation": In-depth background information, follow-up questions to expect, and practical tips on how to effectively structure and present this verbal response to an academic examiner."""
 
             prompt_template = ChatPromptTemplate.from_messages([
-                ("system", f"""You are an educational assessment expert. Generate a quiz of exactly {count} {quiz_type.upper()} questions of {difficulty.upper()} difficulty based on the provided document context.
-                
-{format_instructions}
+                ("system", f"""You are an expert university exam paper setter. Generate a quiz of exactly {count} {quiz_type.upper()} questions of {difficulty.upper()} difficulty based on the provided document context.
 
-Ensure the output is valid JSON only, inside a code block or as raw text. Do not write any conversational intro or outro. Use double quotes for JSON keys and values. Escape any double quotes inside text.
+Generate high-quality quiz questions ONLY from the provided study material.
+
+Rules:
+1. Read the study material carefully and understand the concepts before generating questions.
+2. Every question must test a meaningful concept, not isolated words, headings, filenames, table entries, bullet points, page numbers, image captions, formatting text, or metadata.
+3. Never create questions from:
+   - document titles
+   - section headings alone
+   - bold words without context
+   - figure labels
+   - page numbers
+   - OCR mistakes
+   - incomplete sentences
+4. Questions must be grammatically correct and natural.
+5. Each question must have ONE clearly correct answer. (For MCQs, wrong options should be plausible but incorrect).
+6. Do not repeat questions that test exactly the same concept.
+7. Every question should focus on a different topic whenever possible.
+8. If insufficient information exists for a concept, skip it.
+9. Return ONLY valid JSON in the requested format. Do not write any conversational intro or outro. Use double quotes for JSON keys and values. Escape any double quotes inside text.
+
+Format Requirements:
+{format_instructions}
 
 Context:
 {{context}}"""),
@@ -100,6 +122,32 @@ Context:
         pairs = []
         all_predicates = []
         
+        ignore_words = {
+            "limitation", "limitations", "goal", "goals", "note", "notes", "important", 
+            "advantage", "advantages", "disadvantage", "disadvantages", "warning", "warnings", 
+            "step", "steps", "rule", "rules", "example", "examples", "requirement", "requirements", 
+            "feature", "features", "characteristic", "characteristics", "type", "types", 
+            "method", "methods", "function", "functions", "property", "properties", 
+            "application", "applications", "benefit", "benefits", "drawback", "drawbacks", 
+            "difference", "differences", "similarity", "similarities", "definition", "definitions", 
+            "description", "descriptions", "explanation", "explanations", "introduction", "introductions", 
+            "summary", "summaries", "conclusion", "conclusions", "fact", "facts", "problem", "problems", 
+            "solution", "solutions", "it", "they", "this", "these", "that", "those", "he", "she", 
+            "we", "you", "i", "who", "which", "what", "where", "when", "why", "how", "another", 
+            "other", "others", "some", "any", "all", "each", "every", "both", "either", "neither", 
+            "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", 
+            "first", "second", "third", "fourth", "fifth", "last", "next", "previous", "following", 
+            "above", "below", "here", "there", "their", "our", "your", "my", "his", "her", "its", 
+            "a", "an", "the", "key", "main", "major", "primary", "secondary", "essential", 
+            "crucial", "critical", "significant", "minor", "basic", "simple", "complex", "points",
+            "point", "aspect", "aspects", "factor", "factors", "issue", "issues", "item", "items",
+            "detail", "details", "part", "parts", "element", "elements", "component", "components",
+            "objective", "objectives", "purpose", "purposes", "target", "targets", "result", "results",
+            "outcome", "outcomes", "effect", "effects", "impact", "impacts", "influence", "influences",
+            "reason", "reasons", "cause", "causes", "source", "sources", "origin", "origins",
+            "idea", "ideas", "concept", "concepts", "notion", "notions", "theory", "theories"
+        }
+        
         for s in raw_sentences:
             s_clean = s.strip()
             if 30 < len(s_clean) < 180 and not any(x in s_clean.lower() for x in ("page break", "slide break", "table data", "---")):
@@ -108,8 +156,22 @@ Context:
                 if len(parts) == 2:
                     sub = parts[0].strip()
                     pred = parts[1].strip()
-                    # Clean subject (remove leading bullet marks or numbers)
-                    sub = re.sub(r'^[\d\.\-\*#\s\(\)]+', '', sub).strip()
+                    # Clean subject (remove leading bullet marks, letters like A), a), numbers, etc.)
+                    sub = re.sub(r'^(?:[a-zA-Z0-9]{1,3}[\.\)]|[•\-\*\d\.#\s\(\)])+', '', sub).strip()
+                    # Clean predicate as well from leading symbols
+                    pred = re.sub(r'^(?:[a-zA-Z0-9]{1,3}[\.\)]|[•\-\*\d\.#\s\(\)])+', '', pred).strip()
+                    
+                    # Normalize subject to check if it's generic
+                    sub_norm = sub.lower()
+                    # Remove common leading determiners/adjectives
+                    sub_norm = re.sub(r'^(?:the|a|an|main|key|major|primary|another|this|that|these|those|some|any|our|their|your|my|its)\s+', '', sub_norm).strip()
+                    
+                    if not sub_norm or sub_norm in ignore_words:
+                        continue
+                        
+                    # Skip if the subject is a single character or starts with non-alphanumeric character
+                    if len(sub_norm) < 2 or not sub_norm[0].isalnum():
+                        continue
                     
                     if 2 < len(sub) < 35 and 10 < len(pred) < 130:
                         # Capitalise subject
@@ -131,18 +193,23 @@ Context:
                 if len(words) > 4:
                     keyword = " ".join(words[:2])
                     rest = " ".join(words[2:])
+                    # Clean keyword from asterisks if any
+                    keyword = keyword.replace("*", "").replace("`", "")
+                    rest = rest.replace("*", "").replace("`", "")
+                    s_clean_words = s.replace("*", "").replace("`", "")
+                    
                     if quiz_type.lower() == "mcq":
                         generated.append({
                             "question": f"Based on your notes, which of the following completes: '{keyword} ...'?",
                             "options": [rest, "a fundamental component of the algorithm.", "an optimized resource constraint.", "scheduling queue parameters."],
                             "correct_answer": rest,
-                            "explanation": f"Source document text: '{s}'."
+                            "explanation": f"Source document text: '{s_clean_words}'."
                         })
                     else:
                         generated.append({
                             "question": f"Explain the context of: '{keyword}' from your reading material.",
-                            "sample_answer": s,
-                            "explanation": f"Source notes state: '{s}'."
+                            "sample_answer": s_clean_words,
+                            "explanation": f"Source notes state: '{s_clean_words}'."
                         })
             # Fill in if still empty
             if not generated:
@@ -155,12 +222,16 @@ Context:
         
         generated = []
         for i, (sub, pred, full_sentence) in enumerate(pairs[:count]):
+            # Clean full sentence of asterisks and backticks
+            full_sentence_clean = full_sentence.replace("*", "").replace("`", "")
+            pred_clean = pred.replace("*", "").replace("`", "")
+            
             if quiz_type.lower() == "mcq":
                 # Correct option is the predicate
-                correct_ans = pred
+                correct_ans = pred_clean
                 
-                # Distractors are other predicates from the document
-                other_preds = [p for p in all_predicates if p != pred]
+                # Distractors are other predicates from the document (cleaned of asterisks)
+                other_preds = [p.replace("*", "").replace("`", "") for p in all_predicates if p != pred]
                 random.shuffle(other_preds)
                 distractors = other_preds[:3]
                 
@@ -172,22 +243,22 @@ Context:
                 random.shuffle(options)
                 
                 generated.append({
-                    "question": f"Based on your study notes, what is the description or function of **'{sub}'**?",
+                    "question": f"Based on your study notes, what is the description or function of '{sub}'?",
                     "options": options,
                     "correct_answer": correct_ans,
-                    "explanation": f"According to your materials: '{full_sentence}'"
+                    "explanation": f"According to your materials: '{full_sentence_clean}'"
                 })
             elif quiz_type.lower() == "short":
                 generated.append({
-                    "question": f"Based on your lecture notes, define or explain: **'{sub}'**.",
-                    "sample_answer": f"{sub} is {pred}.",
-                    "explanation": f"Your explanation should include: '{pred}'."
+                    "question": f"Based on your lecture notes, provide a detailed explanation of '{sub}'.",
+                    "sample_answer": f"{sub} refers to the mechanism where {pred_clean}. In the context of computer systems, this is crucial because it ensures proper resource allocation, process synchronization, or memory layout alignment as described in your study materials. Key concepts include its definition, its operational constraints, and how it behaves under workload pressure.",
+                    "explanation": f"The evaluator will look for a clear definition of {sub} as {pred_clean}. Additionally, the answer must highlight its architectural significance, key parameters, and how it impacts system performance."
                 })
             else:  # viva
                 generated.append({
-                    "question": f"If asked in a viva voce: 'What do you understand by the term **\"{sub}\"**?', how would you respond?",
-                    "sample_answer": f"According to our notes, it is {pred}.",
-                    "explanation": f"Impress the examiner by stating that it is: '{pred}'."
+                    "question": f"If asked in a viva voce: 'What do you understand by the term \"{sub}\"?', how would you respond?",
+                    "sample_answer": f"Sir/Ma'am, in computer systems, {sub} is defined as {pred_clean}. To elaborate further, it functions by organizing or controlling system resources dynamically. Its primary goal is to optimize execution flow and prevent synchronization bottlenecks. We study this concept to understand how the operating system coordinates concurrent operations.",
+                    "explanation": f"Explain {sub} clearly using its core definition: '{pred_clean}'. To impress the examiner, relate it to real-world operating system behaviors, mention its benefits (e.g., efficiency, synchronization), and be ready to answer follow-up questions about its execution overhead."
                 })
                 
         return generated
@@ -209,21 +280,21 @@ Context:
                     "Circular Wait"
                 ],
                 "correct_answer": "Preemption",
-                "explanation": "According to the Coffman conditions, 'No Preemption' is the necessary condition. If resources can be preempted (taken away), deadlocks can be resolved or prevented."
+                "explanation": "According to the Coffman conditions, **No Preemption** is the necessary condition for a deadlock to occur, meaning resources cannot be forcibly snatched from a process. **Preemption** (the ability of the OS to preempt resources) is actually a deadlock recovery or prevention strategy, not a cause of deadlock. The other three necessary conditions are Mutual Exclusion, Hold & Wait, and Circular Wait."
             },
             {
-                "question": "What memory allocation problem does Paging solve?",
+                "question": "What memory allocation problem does Paging solve, and what type of fragmentation does it introduce?",
                 "options": [
-                    "Internal Fragmentation",
-                    "External Fragmentation",
-                    "Belady's Anomaly",
-                    "Page Fault Overhead"
+                    "Solves Internal Fragmentation; introduces External Fragmentation",
+                    "Solves External Fragmentation; introduces Internal Fragmentation",
+                    "Solves both Internal and External Fragmentation",
+                    "Solves Page Faults; introduces Belady's Anomaly"
                 ],
-                "correct_answer": "External Fragmentation",
-                "explanation": "Paging avoids external fragmentation by dividing physical memory into fixed-sized frames and logical memory into pages, allowing non-contiguous allocation. However, paging can still suffer from minor internal fragmentation in the last page frame."
+                "correct_answer": "Solves External Fragmentation; introduces Internal Fragmentation",
+                "explanation": "Paging solves the problem of **External Fragmentation** by dividing physical memory into fixed-size frames and allocating memory non-contiguously. However, because memory is allocated in fixed pages, if a process requests a size that is not an exact multiple of the page size, the last page frame will have unused memory, which introduces **Internal Fragmentation**."
             },
             {
-                "question": "In the Banker's Algorithm, which of the following represents the allocation state?",
+                "question": "In the Banker's Algorithm for deadlock avoidance, how is the remaining resource demand (Need) computed?",
                 "options": [
                     "Need = Max - Allocation",
                     "Allocation = Max + Need",
@@ -231,10 +302,10 @@ Context:
                     "Need = Allocation - Max"
                 ],
                 "correct_answer": "Need = Max - Allocation",
-                "explanation": "The safety matrix calculation in the Banker's Algorithm defines the Need vector/matrix as the maximum potential resource demand minus the currently allocated resources: Need = Max - Allocation."
+                "explanation": "The safety matrix calculations in the Banker's Algorithm define the **Need** matrix as the maximum potential resource claim of a process minus its currently allocated resources: `Need = Max - Allocation`. This determines how many more resources the process might request in the worst-case scenario before releasing its allocations."
             },
             {
-                "question": "Which CPU scheduling algorithm guarantees the minimum average waiting time?",
+                "question": "Which CPU scheduling algorithm is mathematically proven to guarantee the minimum average waiting time for a given set of stationary processes?",
                 "options": [
                     "Round Robin (RR)",
                     "Shortest Job First (SJF)",
@@ -242,74 +313,74 @@ Context:
                     "Priority Scheduling"
                 ],
                 "correct_answer": "Shortest Job First (SJF)",
-                "explanation": "Shortest Job First (SJF) scheduling is provably optimal. By scheduling the process with the shortest burst time first, it minimizes the average waiting time for a given set of processes."
+                "explanation": "Shortest Job First (SJF) scheduling is provably optimal. By scheduling the process with the shortest CPU burst time first, it minimizes the wait time for the remaining processes in the queue, thereby guaranteeing the absolute minimum average waiting time for any non-preemptive set of processes."
             },
             {
-                "question": "Belady's Anomaly is most commonly observed in which of the following page replacement algorithms?",
+                "question": "Belady's Anomaly is a counter-intuitive phenomenon. In which page replacement algorithm is it most commonly observed, and what causes it?",
                 "options": [
-                    "LRU (Least Recently Used)",
-                    "Optimal Page Replacement",
-                    "FIFO (First-In, First-Out)",
-                    "LFU (Least Frequently Used)"
+                    "LRU (Least Recently Used) because it tracks history.",
+                    "FIFO (First-In, First-Out) because it does not follow the stack property.",
+                    "Optimal Page Replacement because it looks into the future.",
+                    "LFU (Least Frequently Used) because of frequency count stagnation."
                 ],
-                "correct_answer": "FIFO (First-In, First-Out)",
-                "explanation": "Belady's Anomaly is the phenomenon where increasing the number of page frames results in an increase in the number of page faults. It occurs in FIFO page replacement but not in stack-based algorithms like LRU."
+                "correct_answer": "FIFO (First-In, First-Out) because it does not follow the stack property.",
+                "explanation": "Belady's Anomaly is the phenomenon where increasing the number of page frames results in an increase in the number of page faults. It occurs in FIFO page replacement because FIFO is not a stack-based algorithm (it does not satisfy the property where the set of pages in memory for $n$ frames is a subset of pages in memory for $n+1$ frames)."
             }
         ]
 
         short_questions = [
             {
-                "question": "Explain the difference between a mutex and a binary semaphore.",
-                "sample_answer": "A mutex lock is owned by the process/thread that acquires it, meaning only the thread that locked the mutex can unlock it. A binary semaphore, however, does not have the concept of ownership; any thread can trigger a signal() operation to release a thread waiting on a wait() operation.",
-                "explanation": "Evaluators look for the concept of 'Ownership'. A mutex is a locking mechanism, whereas a semaphore is a signaling mechanism."
+                "question": "Explain the difference between a Mutex and a Binary Semaphore in detail.",
+                "sample_answer": "1. **Ownership**: A Mutex has a strict concept of ownership. The thread that locks the Mutex is the only thread allowed to unlock it. A Binary Semaphore has no owner; any thread can signal and release a thread waiting on it.\n2. **Use Case**: Mutexes are designed specifically to achieve mutual exclusion for a critical section. Binary Semaphores are signaling mechanisms used to synchronize task execution or signal event occurrences.\n3. **Safety Features**: Because Mutexes have owners, they can implement safety features like priority inheritance to avoid priority inversion. Semaphores do not support priority inheritance.",
+                "explanation": "The evaluator will look for: (1) **Ownership** concept (Mutex has an owner, Semaphore does not), (2) **Mutual exclusion locking** vs. **general signaling**, (3) **Priority inversion/priority inheritance** support."
             },
             {
-                "question": "What is a Translation Lookaside Buffer (TLB) and why is it used?",
-                "sample_answer": "A TLB is a high-speed associative hardware cache. It stores recent virtual-to-physical page translations. It is used to reduce the memory access time since a standard page table lookup requires two memory accesses (one for the table and one for the data).",
-                "explanation": "Ensure you mention 'hardware cache', 'speeding up translations', and avoiding 'two memory accesses'."
+                "question": "What is a Translation Lookaside Buffer (TLB)? Explain its function and role in address translation.",
+                "sample_answer": "A Translation Lookaside Buffer (TLB) is a high-speed, hardware associative cache located inside the CPU's Memory Management Unit (MMU). It stores a small number of recent virtual-to-physical page translations. \nWhen the CPU requests a logical address, the MMU checks the TLB first (a TLB hit). If found, translation is instant. If not (a TLB miss), the MMU must perform a full page table walk in main memory, which takes two or more memory accesses (one to read the page table entry, one to read actual data). The TLB is used to reduce this translation latency and speed up instruction execution.",
+                "explanation": "The answer must cover: (1) **Hardware cache** definition, (2) **TLB Hit vs. TLB Miss** mechanics, (3) **Reducing memory latency** (avoiding double memory access)."
             },
             {
-                "question": "What is race condition?",
-                "sample_answer": "A race condition is an undesirable situation that occurs when multiple threads or processes access and manipulate shared data concurrently, and the final outcome of the execution depends on the specific order or timing in which the accesses occur.",
-                "explanation": "Highlight 'concurrent access', 'shared data', and 'outcome depending on execution order'."
+                "question": "Define a Race Condition. How does it occur, and what is the standard method to prevent it?",
+                "sample_answer": "A Race Condition is an undesirable situation that occurs when multiple processes or threads access and manipulate shared data concurrently, and the final outcome of the execution depends entirely on the relative order or timing of their execution.\nIt occurs when at least one thread modifies the shared variable without proper synchronization, leaving the data in an inconsistent state. To prevent race conditions, the critical sections of code that access shared variables must be executed in a mutually exclusive manner, using synchronization mechanisms like Mutex locks, Semaphores, or monitor blocks.",
+                "explanation": "Key grading points: (1) **Concurrent access to shared data**, (2) **Outcome depends on execution timing**, (3) **Mutual exclusion / lock synchronization** as the prevention method."
             },
             {
-                "question": "Describe the main difference between internal and external fragmentation.",
-                "sample_answer": "Internal fragmentation occurs when memory partitions are fixed-size and a process is allocated a partition larger than it needs, leaving unused space inside the allocated block. External fragmentation occurs when memory is variable-size and there is enough total free memory to satisfy a process request, but the memory is divided into small, non-contiguous blocks.",
-                "explanation": "Contrast fixed partitioning (internal) with dynamic partitioning (external) and define where the wasted memory resides."
+                "question": "Contrast Internal Fragmentation and External Fragmentation. Provide examples of memory schemes where each occurs.",
+                "sample_answer": "- **Internal Fragmentation**: Occurs when physical memory is divided into fixed-size partitions. A process is allocated a partition larger than its request, leaving unused memory space inside the allocated block. Example: **Paging** (wasted space in the last page frame) or **Static Partitioning**.\n- **External Fragmentation**: Occurs when physical memory is allocated dynamically. As processes load and terminate, free memory is broken into tiny, non-contiguous slots. There is enough total free space to satisfy a process request, but it cannot be used because it is not contiguous. Example: **Segmentation** or **Dynamic Partitioning**.",
+                "explanation": "Ensure you contrast: (1) **Location of wasted memory** (inside allocated block vs. outside/between blocks), (2) **Fixed vs. Variable partitioning**, (3) **Typical memory schemes** (Paging for internal, Segmentation for external)."
             },
             {
-                "question": "What are virtual addresses and physical addresses?",
-                "sample_answer": "A virtual (logical) address is generated by the CPU during execution, representing the address space of a process. A physical address is the actual physical location in primary memory (RAM) where the instruction or data resides. The MMU handles the mapping between the two.",
-                "explanation": "Differentiate CPU-generated (logical/virtual) from RAM-resident (physical) and credit the MMU for mapping."
+                "question": "Explain the difference between Logical (Virtual) Address Space and Physical Address Space. How are they mapped?",
+                "sample_answer": "1. **Logical (Virtual) Address Space**: The set of all virtual addresses that a CPU generates during program execution. It is logical because it exists from the perspective of the running process, isolated from physical RAM.\n2. **Physical Address Space**: The set of all physical addresses in the hardware memory (RAM) unit where instructions and data actually reside.\n3. **Mapping**: The translation from logical to physical addresses is handled dynamically at run-time by a hardware component called the **Memory Management Unit (MMU)**. The MMU uses base registers, page tables, or segment tables to translate virtual addresses on the fly.",
+                "explanation": "The answer must define: (1) **Logical address** as CPU-generated, (2) **Physical address** as RAM hardware locations, (3) **MMU** (Memory Management Unit) as the component translating them."
             }
         ]
 
         viva_questions = [
             {
-                "question": "What will happen if we don't handle deadlocks in a system?",
-                "sample_answer": "The system will lock up, processes will freeze, and resources will remain occupied indefinitely until the system is manually restarted or process tasks are killed.",
-                "explanation": "Give a direct answer indicating process freezing and the necessity of rebooting."
+                "question": "What is the consequence of leaving deadlocks unhandled in a system? How does a general-purpose OS handle them?",
+                "sample_answer": "If deadlocks are unhandled, the locked processes will remain frozen indefinitely, keeping their allocated resources occupied and unavailable to other processes. This causes system performance to degrade over time, eventually requiring a manual system reboot.\nTo avoid the high computational cost of constant deadlock avoidance algorithms, most general-purpose operating systems (like Windows, Linux, and macOS) employ the **Ostrich Algorithm**, which ignores the problem entirely under the assumption that deadlocks occur rarely enough that the cost of handling them exceeds the cost of a reboot.",
+                "explanation": "Explain that: (1) **Resources stay locked, processes freeze**, (2) **Manual reboot is needed**, (3) **Ostrich Algorithm** is the standard approach used by modern OSs (ignoring the deadlock for performance reasons)."
             },
             {
-                "question": "Is the Banker's Algorithm practical to run in a general-purpose OS? Why?",
-                "sample_answer": "No, it is not practical. It requires knowing the maximum resource demands of all processes in advance, which is rarely possible, and running the safety algorithm has high computational overhead.",
-                "explanation": "Focus on the constraint of knowing 'maximum demands in advance' and the performance cost."
+                "question": "Is the Banker's Algorithm practical to run in a real operating system? Justify your answer with two key limitations.",
+                "sample_answer": "No, the Banker's Algorithm is highly impractical for real-world operating systems due to two major limitations:\n1. **A priori knowledge**: It requires all processes to declare their maximum resource claims in advance before execution begins, which is impossible in a dynamic, multi-tasking OS.\n2. **Dynamic process changes**: It assumes processes are fixed in number and resources do not change dynamically. Additionally, running safety state checks ($O(m \\cdot n^2)$ overhead) on every resource request would cause severe CPU bottlenecking.",
+                "explanation": "Justification must detail: (1) **Difficulty of knowing max resource claims in advance**, (2) **Severe CPU performance overhead** of safety checks in a dynamic system."
             },
             {
-                "question": "Can page size be arbitrary? Why or why not?",
-                "sample_answer": "No, page sizes must be powers of 2 (typically 4KB to 64KB) because it simplifies hardware address translation—allowing bitwise shifts instead of division.",
-                "explanation": "Point out 'powers of 2' and the hardware convenience of separating page number and offset without arithmetic."
+                "question": "Why must page sizes always be powers of 2? Explain the mathematical advantage in address translation.",
+                "sample_answer": "Page sizes must be powers of 2 (such as 4KB, which is $2^{12}$ bytes) because it simplifies the hardware design of the Memory Management Unit (MMU). \nSpecifically, it allows address translation to occur without mathematical division or multiplication. By using powers of 2, a logical address can be split directly into bits. For a 32-bit address with 4KB page size ($2^{12}$), the lower 12 bits represent the page offset, and the upper 20 bits represent the page number. Translation is done instantly using simple bitwise shifts.",
+                "explanation": "Key explanation points: (1) **Simplifying hardware design**, (2) **Avoiding division/multiplication**, (3) **Bit division** (upper bits for page number, lower bits for offset)."
             },
             {
-                "question": "What is a context switch?",
-                "sample_answer": "It is the process of storing the state of a CPU process/thread so that it can be restored and execution resumed later, enabling multiple processes to share a single CPU.",
-                "explanation": "Highlight saving/restoring CPU state (registers, program counter) and enabling concurrency."
+                "question": "Describe what occurs during a context switch. What is its main drawback?",
+                "sample_answer": "During a context switch, the OS halts the currently executing process and saves its state (including CPU registers, program counter, stack pointer, and memory mappings) into its Process Control Block (PCB). It then loads the saved state of the next scheduled process from its PCB into the CPU registers, enabling execution to resume.\nThe main drawback is **system overhead**. Context switching does not perform any useful real-world work; it consumes CPU cycles saving and loading states, flushing CPU caches, and reloading TLB tables, which slows down the system.",
+                "explanation": "Describe: (1) **Saving current state to PCB**, (2) **Loading new state from PCB**, (3) **Overhead penalty** (cache invalidation, TLB flush, wasted CPU cycles)."
             },
             {
-                "question": "What is the difference between preemptive and non-preemptive scheduling?",
-                "sample_answer": "In preemptive scheduling, the OS can interrupt a running process and reallocate the CPU to another process. In non-preemptive scheduling, once a process gets the CPU, it holds it until it voluntary releases it or terminates.",
-                "explanation": "Use terms like 'forcibly interrupt' vs 'runs to completion/voluntary yield'."
+                "question": "Differentiate between preemptive and non-preemptive CPU scheduling. Which is preferred for time-sharing systems?",
+                "sample_answer": "- **Preemptive Scheduling**: The operating system can interrupt a currently running process at any time (e.g., on a timer interrupt or priority arrival) and allocate the CPU to another process. This is preferred for time-sharing/interactive systems (like Windows/Linux) because it guarantees responsiveness and prevents starvation.\n- **Non-Preemptive Scheduling**: Once a process is allocated the CPU, it keeps running until it voluntarily relinquishes control (by blocking for I/O or terminating). It is simple but can cause long processes to block others indefinitely.",
+                "explanation": "Contrast: (1) **Forcible interruption** (preemptive) vs. **runs until voluntary release** (non-preemptive), (2) **Time-sharing preference** (preemptive scheduling is required for interactive responsiveness)."
             }
         ]
 
