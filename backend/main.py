@@ -58,7 +58,7 @@ class QuizRequest(BaseModel):
     count: int = 5
 
 class PYQRequest(BaseModel):
-    pyq_doc_id: str
+    pyq_doc_ids: List[str]
     notes_doc_ids: Optional[List[str]] = None
 
 # Helper functions to manage persistence
@@ -328,36 +328,45 @@ def generate_quiz(request: QuizRequest):
 
 @app.post("/api/pyq-analysis")
 def analyze_pyq(request: PYQRequest):
-    """Analyzes a PYQ paper and maps it against study materials."""
-    # Find the PYQ document
+    """Analyzes PYQ papers and maps them against study materials."""
     docs = load_documents_metadata()
-    if request.pyq_doc_id not in docs:
-        raise HTTPException(status_code=404, detail="PYQ document not found.")
-        
-    pyq_info = docs[request.pyq_doc_id]
-    pyq_file_path = config.UPLOAD_DIR / f"{request.pyq_doc_id}{pyq_info['extension']}"
+    
+    # Validate that all requested PYQ documents exist
+    for doc_id in request.pyq_doc_ids:
+        if doc_id not in docs:
+            raise HTTPException(status_code=404, detail=f"PYQ document {doc_id} not found.")
+            
+    combined_pyq_texts = []
+    for doc_id in request.pyq_doc_ids:
+        pyq_info = docs[doc_id]
+        pyq_file_path = config.UPLOAD_DIR / f"{doc_id}{pyq_info['extension']}"
+        try:
+            parsed_result = DocumentProcessor.process_document(str(pyq_file_path))
+            if parsed_result["success"]:
+                combined_pyq_texts.append(parsed_result["text"])
+            else:
+                raise Exception(parsed_result["error"])
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to process PYQ {pyq_info.get('filename', doc_id)}: {str(e)}")
+            
+    if not combined_pyq_texts:
+        raise HTTPException(status_code=400, detail="No readable content found in the selected PYQ papers.")
+         
+    pyq_text = "\n\n--- NEXT QUESTION PAPER ---\n\n".join(combined_pyq_texts)
     
     try:
-        # 1. Parse pyq text directly
-        parsed_result = DocumentProcessor.process_document(str(pyq_file_path))
-        if not parsed_result["success"]:
-            raise Exception(parsed_result["error"])
-        pyq_text = parsed_result["text"]
-        
-        # 2. Retrieve syllabus/notes chunks that correspond to the subjects mentioned in the PYQ
-        # Querying with PYQ content preview
+        # Retrieve syllabus/notes chunks that correspond to the subjects mentioned in the PYQs
         query_text = pyq_text[:1000] if len(pyq_text) > 1000 else pyq_text
         notes_chunks = db_manager.query(
             query_text=query_text,
             doc_filter=request.notes_doc_ids,
-            n_results=10
+            n_results=15
         )
         
-        # 3. Generate analysis report
         result = PYQAnalyzer.analyze_pyq(pyq_text, notes_chunks)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to analyze PYQ: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to analyze PYQs: {str(e)}")
 
 
 # --- Serve Frontend SPA ---

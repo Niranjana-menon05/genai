@@ -374,14 +374,17 @@ function refreshDocChecklists() {
     }
   }
 
-  // 4. PYQ Paper Selector
-  const pyqSelect = document.getElementById('pyq-paper-select');
-  if (pyqSelect) {
+  // 4. PYQ Papers Checklist
+  const pyqPapersList = document.getElementById('pyq-papers-checklist');
+  if (pyqPapersList) {
     if (pyqDocs.length === 0) {
-      pyqSelect.innerHTML = `<option value="">-- No PYQ papers uploaded --</option>`;
+      pyqPapersList.innerHTML = `<p class="text-[10px] text-slate-400 italic p-2">Upload PYQ papers (flagged as PYQ) to select them.</p>`;
     } else {
-      pyqSelect.innerHTML = pyqDocs.map(doc => `
-        <option value="${doc.id}">${doc.filename}</option>
+      pyqPapersList.innerHTML = pyqDocs.map(doc => `
+        <label class="flex items-start gap-2 p-1 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-[11px] font-semibold">
+          <input type="checkbox" name="pyq-selected-papers" value="${doc.id}" checked class="mt-0.5 w-3.5 h-3.5 rounded text-purple-600">
+          <span class="truncate" title="${doc.filename}">${doc.filename}</span>
+        </label>
       `).join('');
     }
   }
@@ -774,11 +777,11 @@ function copyRevisionNotes() {
 // ================= PYQ ANALYSIS CONTROLS =================
 
 async function handleAnalyzePYQ() {
-  const pyqDocId = document.getElementById('pyq-paper-select').value;
+  const pyqDocIds = Array.from(document.querySelectorAll('input[name="pyq-selected-papers"]:checked')).map(cb => cb.value);
   const notesDocIds = Array.from(document.querySelectorAll('input[name="pyq-selected-notes"]:checked')).map(cb => cb.value);
 
-  if (!pyqDocId) {
-    showNotification("Please select an uploaded PYQ paper first.", "error");
+  if (pyqDocIds.length === 0) {
+    showNotification("Please select at least one uploaded PYQ paper first.", "error");
     return;
   }
 
@@ -796,7 +799,7 @@ async function handleAnalyzePYQ() {
     const res = await fetch(`${API_BASE}/pyq-analysis`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pyq_doc_id: pyqDocId, notes_doc_ids: notesDocIds.length > 0 ? notesDocIds : null })
+      body: JSON.stringify({ pyq_doc_ids: pyqDocIds, notes_doc_ids: notesDocIds.length > 0 ? notesDocIds : null })
     });
 
     if (res.ok) {
@@ -840,6 +843,42 @@ function renderPYQAnalysis(topics) {
 
     const pct = Math.round((t.frequency / maxFreq) * 100);
 
+    // Questions list html
+    let questionsHtml = '';
+    if (t.questions && t.questions.length > 0) {
+      const questionsList = t.questions.map((qObj, qIdx) => {
+        const collapseId = `pyq-collapse-${idx}-${qIdx}`;
+        return `
+          <div class="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden bg-slate-50/50 dark:bg-slate-900/5">
+            <button type="button" onclick="toggleCollapse('${collapseId}')" class="w-full flex items-center justify-between p-3 text-left text-xs font-bold text-slate-700 dark:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all-300">
+              <span class="flex items-center gap-2">
+                <i data-lucide="help-circle" class="w-3.5 h-3.5 text-purple-500 shrink-0"></i>
+                <span class="leading-normal">${qObj.question}</span>
+              </span>
+              <i id="icon-${collapseId}" data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0"></i>
+            </button>
+            <div id="${collapseId}" class="hidden p-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-650 dark:text-slate-350 bg-white dark:bg-slate-900/10 leading-relaxed space-y-2">
+              <div class="font-bold text-[9px] uppercase tracking-wide text-purple-750 dark:text-purple-400 flex items-center gap-1">
+                <i data-lucide="book-open" class="w-3 h-3"></i> Solution & Answer:
+              </div>
+              <div class="whitespace-pre-line text-slate-600 dark:text-slate-400">${formatMarkdownToHTML(qObj.answer)}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      questionsHtml = `
+        <div class="mt-4 pt-2 border-t border-slate-50 dark:border-slate-800 space-y-2">
+          <p class="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1">
+            <i data-lucide="list-collapse" class="w-3.5 h-3.5"></i> Exam Questions & Solutions (${t.questions.length})
+          </p>
+          <div class="space-y-2">
+            ${questionsList}
+          </div>
+        </div>
+      `;
+    }
+
     return `
       <div class="p-4 rounded-xl border border-slate-100 dark:border-slate-800 space-y-3 bg-white dark:bg-slate-900/10 hover:shadow-sm transition-all-300">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -860,11 +899,15 @@ function renderPYQAnalysis(topics) {
           </div>
           <div class="text-[11px] text-slate-500 leading-relaxed">${formatMarkdownToHTML(t.description)}</div>
         </div>
+        
+        <!-- Accordion Questions/Solutions -->
+        ${questionsHtml}
       </div>
     `;
   }).join('');
 
   outputEl.innerHTML = `<div class="space-y-3.5">${listHtml}</div>`;
+  lucide.createIcons();
 }
 
 // ================= QUIZ GENERATOR CONTROLS =================
@@ -1258,3 +1301,19 @@ function formatMarkdownToHTML(text) {
 
   return `<p>${clean}</p>`;
 }
+
+// Collapsible helper function for PYQ accordion questions
+function toggleCollapse(id) {
+  const panel = document.getElementById(id);
+  const icon = document.getElementById(`icon-${id}`);
+  if (panel && icon) {
+    if (panel.classList.contains('hidden')) {
+      panel.classList.remove('hidden');
+      icon.classList.add('rotate-180');
+    } else {
+      panel.classList.add('hidden');
+      icon.classList.remove('rotate-180');
+    }
+  }
+}
+window.toggleCollapse = toggleCollapse;
